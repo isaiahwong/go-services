@@ -1,0 +1,196 @@
+syntax = "proto3";
+
+import "payment/schema.proto";
+import "payment/paypal.proto";
+import "payment/stripe.proto";
+
+import "google/api/annotations.proto";
+
+package payment;
+
+option go_package ="payment";
+
+service PaymentService {
+  /*
+   * Payment
+   */
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+
+  rpc RetrievePayment(RetrievePaymentRequest) returns (RetrievePaymentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/retrieve",
+    };
+  }
+
+  rpc Refund(RefundRequest) returns (RefundResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/refund",
+    };
+  }
+
+  /*
+   * Stripe
+   */
+  rpc StripeSetupIntent(SetupIntentRequest) returns (SetupIntentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/s/intent/setup",
+    };
+  }
+  
+  rpc StripeAddCard(AddCardRequest) returns (AddCardResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/s/card/add",
+    };
+  }
+
+  rpc StripeCharge(OnStripeChargeRequest) returns (OnStripeChargeResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/s/charge",
+    };
+  }
+
+  rpc StripeTestWebhook(StripeWebhook) returns (Response) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/stripe/webhook/test",
+      body: "*"
+    };
+  }
+
+  rpc StripePaymentIntentWebhook(StripeWebhook) returns (Response) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/stripe/webhook/paymentintent",
+      body: "*"
+    };
+  }
+
+  /*
+   * Paypal
+   */
+  rpc PaypalCreateOrder(PaypalCreateOrderRequest) returns (PaypalCreateOrderResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/p/order/create",
+    };
+  }
+
+  rpc PaypalProcessOrder(PaypalProcessOrderRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/p/order/process",
+    };
+  }
+
+  rpc PaypalOrderWebhook(PaypalWebhook) returns (Response) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/paypal/webhook/order",
+      body: "*"
+    };
+  }
+
+  rpc PaypalTestWebhook(PaypalWebhook) returns (Response) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/paypal/webhook/test",
+      body: "*"
+    };
+  }
+}
+
+message CreatePaymentRequest {
+  string user = 1;
+  string email = 2;
+}
+
+message CreatePaymentResponse {
+  bool success = 1;
+  Payment payment = 2;
+}
+
+message RetrievePaymentRequest {
+  string user = 1;
+}
+
+message RetrievePaymentResponse {
+  bool success = 1;
+  Payment payment = 2;
+}
+
+message RefundRequest {
+  string user = 1;
+  string transaction = 2;
+}
+
+message RefundResponse {
+  bool success = 1;
+  Refund refund = 2;
+  Transaction transaction = 3;
+}
+
+message AddCardRequest {
+  string payment_method = 1;
+  string user = 2;
+}
+
+message AddCardResponse {
+  repeated PaymentMethod all_cards = 1;
+  InvoiceSettings invoice_settings = 2; // default payment
+  bool success = 3;
+}
+
+message OnStripeChargeRequest {
+  string user = 1;
+  string email = 2;
+  Items items = 3;
+  string currency = 4;
+  double subtotal = 5;
+  double total = 6;
+  bool off_session = 7;
+}
+
+message OnStripeChargeResponse {
+  PaymentIntent payment_intent = 1;
+  bool success = 2;
+}
+
+message SetupIntentRequest {
+  string user = 1;
+  bool on_session  = 2;
+}
+
+message SetupIntentResponse {
+  bool success = 1;
+  string client_secret = 2;
+}
+
+message StripeWebhook {
+  bytes body = 1;
+}
+
+message PaypalCreateOrderRequest {
+  string user = 1;
+  Items items = 2;
+  string currency = 3;
+  double total = 4;
+  string intent = 5;
+  ApplicationContext application_context = 6;
+}
+
+message PaypalProcessOrderRequest {
+  string user = 1;
+  string order_id = 2;
+}
+
+message PaypalCreateOrderResponse {
+  bool success = 1;
+  string order_id = 2;
+  string href = 3;
+  string rel = 4;
+  string method = 5;
+}
+
+message PaypalWebhook {
+  bytes body = 1;
+}
+
+message Response {
+  bool success = 1;
+}
+
+message Empty {}

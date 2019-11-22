@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package payment;
+
+import "payment/stripe.proto";
+
+message Items {
+  message Data {
+    string id = 1;
+    string name = 2;
+    double amount = 3;
+    int64 quantity = 4;
+    bytes metadata = 5;
+    string currency = 6;
+    string description = 7;
+  }
+  string id = 1;
+  string description = 2;
+  bytes metadata = 3;
+  int64 total_items = 4;
+  double shipping = 5;
+  double tax = 6;
+  double shipping_discount = 7;
+  double discount = 8;
+  string currency = 9;
+  double subtotal = 10;
+  repeated Data data = 11;
+}
+
+message Refund {
+  string id = 1;
+  string object = 2;
+  string transaction = 3;
+  double amount = 4;
+  string currency = 5;
+  string reason = 6;
+  string status = 7;
+  string failure_refund = 8;
+  string failure_reason = 9;
+  double updated = 10;
+  double created = 11;
+  string stripe_refund = 12;
+  string paypal_refund = 13;
+}
+
+message Transaction {
+  message TransactionError {
+    string error = 1;
+    string type = 2;
+    string message = 3;
+    string stripe_error_code = 4;
+  }
+  string id = 1;
+  string object = 2;
+  string payment = 3;
+  string user = 4;
+  string refund = 5;
+  string email = 6;
+  string provider = 7;
+  string paypal_order_id = 8;
+  string stripe_payment_intent = 9;
+  string currency = 10;
+  Items items = 11;
+  double total = 12;
+  string coupon = 13;
+  string status = 14;
+  string ip = 15;
+  double updated = 16;
+  double created = 17;
+  double transitory_expires = 18;
+  TransactionError transaction_error = 19;
+}
+
+message Payment {
+  message Stripe {
+    string customer = 1;
+    string default_payment_method = 2;
+  }
+
+  string id = 1;
+  string object = 2;
+  string user = 3;
+  string email = 4;
+  string default_provider = 5;
+  Stripe stripe = 6;
+  repeated Transaction transactions = 7;
+  double updated = 8;
+  double created = 9;
+}
