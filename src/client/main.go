@@ -8,6 +8,7 @@ import (
 	pb "github.com/isaiahwong/go-services/src/payment/proto-gen/payment"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -19,11 +20,17 @@ func main() {
 	defer conn.Close()
 
 	c := pb.NewPaymentServiceClient(conn)
+	var trailer metadata.MD // variable to store header and trailer
 
 	res, err := c.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
 		Email: "isaiah@jirehsoho.com",
-		User:  "12313123",
-	})
+		User:  "s",
+	}, grpc.Trailer(&trailer))
+
+	e := trailer.Get("errors-bin")
+
+	log.Println(e)
+
 	if err != nil {
 		log.Fatalln(err)
 	}
