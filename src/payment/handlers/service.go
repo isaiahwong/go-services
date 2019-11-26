@@ -11,7 +11,8 @@ type PaymentService struct {
 	production bool
 	logger     *logrus.Logger
 	store      *store.MongoStore
-	v          *validator.Validate
+	val        *validator.Validate
+	valcast    func(error) validator.ValidationErrors // cast validators
 }
 
 // NewPaymentService creates a new PaymentService
@@ -26,7 +27,10 @@ func NewPaymentService(production bool, logger *logrus.Logger, store *store.Mong
 		production: production,
 		logger:     logger,
 		store:      store,
-		v:          validator.New(),
+		val:        validator.New(),
+		valcast: func(err error) validator.ValidationErrors {
+			return err.(validator.ValidationErrors)
+		},
 	}
 
 }

@@ -3,12 +3,12 @@ package cmd
 import (
 	"context"
 	"net"
-	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	"github.com/isaiahwong/go-services/src/payment/handlers"
 	pb "github.com/isaiahwong/go-services/src/payment/proto-gen/payment"
+	"github.com/isaiahwong/go-services/src/payment/store"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -41,6 +41,7 @@ func NewServer(opt ...ServerOption) *Server {
 		// grpc.Creds()
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_logrus.UnaryServerInterceptor(logrus.NewEntry(opts.logger)),
+			store.UnaryServerInterceptor(opts.store),
 		)),
 	)
 
@@ -57,26 +58,28 @@ func NewServer(opt ...ServerOption) *Server {
 }
 
 // Run Starts Payment Service
-func (s *Server) Run() error {
-	ce := s.opts.store.Connect(context.Background(), 60*time.Second)
+func (s *Server) Run(config *EnvConfig) error {
+	ctx, cancel := context.WithTimeout(context.Background(), config.DBTimeout)
+	defer cancel()
+
+	ce := s.opts.store.Connect(ctx)
 	if ce != nil {
 		return ce
 	}
 
-	s.opts.logger.Info("Starting Payment service")
+	s.opts.logger.Infof("Starting Payment service on %v", s.opts.hostPort)
 	s.opts.logger.Infof("Production: %v", s.opts.production)
+
 	if err := s.gs.Serve(s.lis); err != nil {
 		return err
 	}
+
 	return nil
+}
 
-	// ch := make(chan os.Signal, 1)
-	// signal.Notify(ch, os.Interrupt)
-
-	// // Block until signal received
-	// <-ch
-	// logger.Println("Stopping server")
-	// s.Stop()
-	// lis.Close()
-	// logger.Println("Exited")
+// Stop stops all services
+func (s *Server) Stop() {
+	s.gs.Stop()
+	s.lis.Close()
+	s.opts.store.Disconnect(context.Background())
 }

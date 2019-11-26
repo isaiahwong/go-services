@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -16,20 +17,41 @@ func (p *PaymentService) CreatePayment(ctx context.Context, req *pb.CreatePaymen
 	user := strings.TrimSpace(req.GetUser())
 	email := strings.TrimSpace(req.GetEmail())
 
-	us := p.v.Var(user, "required,max=30")
+	us := p.val.Var(user, "required,max=30")
 	if us != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "User id required")
 	}
 
-	ee := p.v.Var(email, "required,email,max=64")
+	ee := p.val.Var(email, "required,email,max=64")
 	if ee != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid email")
 	}
 
-	oid, err := p.store.Create(context.Background(), &model.Payment{
+	pay := &model.Payment{
 		User:  user,
 		Email: email,
-	})
+	}
+
+	errors := []model.Error{}
+	perr := p.val.Struct(pay)
+
+	if perr != nil {
+		for _, err := range p.valcast(perr) {
+			fmt.Println("\nFIELD")
+			fmt.Println(err.Namespace())
+			fmt.Println(err.Field())
+			fmt.Println(err.StructNamespace()) // can differ when a custom TagNameFunc is registered or
+			fmt.Println(err.StructField())     // by passing alt name to ReportError like below
+			fmt.Println(err.Tag())
+			fmt.Println(err.ActualTag())
+			fmt.Println(err.Kind())
+			fmt.Println(err.Type())
+			fmt.Println(err.StructField(), err.Value(), err.Param())
+			append(errors, model.Error{})
+		}
+	}
+
+	oid, err := p.store.Create(ctx, pay)
 
 	if err != nil {
 		p.logger.Error(err)

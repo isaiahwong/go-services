@@ -1,34 +1,30 @@
 package cmd
 
 import (
-	"net"
-	"os"
-	"strconv"
-	"strings"
+	"fmt"
 
 	"github.com/isaiahwong/go-services/src/payment/pkg/log"
 	"github.com/isaiahwong/go-services/src/payment/store"
-	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 var logger *logrus.Logger
 var datastore *store.MongoStore
 
-func loadEnv() {
-	err := godotenv.Load()
-	if err != nil {
-		logger.Fatal("Error loading .env file")
-		os.Exit(1)
-	}
-}
-
 func init() {
 	loadEnv()
 	logger = log.NewLogger()
+
+	// Create a new MongoStore
 	s, me := store.NewMongoStore(
-		store.ConnectionString(os.Getenv("DB_URI_DEV")),
-		store.Database("payment"),
+		store.ConnectionString(config.DBUri),
+		store.Database(config.DBName),
+		store.SetTimeout(config.DBTimeout),
+		store.SetAuth(store.MongoCredential{
+			Username: config.DBUser,
+			Password: config.DBPassword,
+		}),
+		store.SetHeartbeat(config.DBTimeout),
 	)
 	if me != nil {
 		logger.Fatalf("NewMongoStore error: %v\n", me)
@@ -39,12 +35,12 @@ func init() {
 // Execute payment microservice
 func Execute() {
 	s := NewServer(
-		HostPort(net.JoinHostPort("0.0.0.0", strconv.Itoa(50051))),
+		HostPort(fmt.Sprintf("%v:%v", config.Host, config.Port)),
 		Logger(logger),
-		Production(strings.ToLower(os.Getenv("APP_ENV")) == "production"),
+		Production(config.Production),
 		Store(datastore),
 	)
-	if err := s.Run(); err != nil {
+	if err := s.Run(config); err != nil {
 		s.opts.logger.Fatalf("Error serving server: %v", err)
 	}
 }

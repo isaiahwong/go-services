@@ -18,13 +18,13 @@ const (
 // Payment struct
 type Payment struct {
 	ID              primitive.ObjectID `bson:"id,omitempty" json:"id"`
-	Object          string             `bson:"object" json:"object" validate:"eq=payment,required"`
-	User            string             `bson:"user" json:"user" validate:"required"`
-	Email           string             `bson:"email" json:"email"  validate:"required,email"`
-	DefaultProvider PaymentProvider    `bson:"default_provider" json:"default_provider" validate:"required"`
+	Object          string             `validate:"eq=payment,required" bson:"object" json:"object" `
+	User            string             `validate:"required" bson:"user" json:"user"`
+	Email           string             `validate:"required,email" bson:"email" json:"email"  `
+	DefaultProvider PaymentProvider    `validate:"required" bson:"default_provider" json:"default_provider"`
 	Stripe          Stripe             `bson:"stripe" json:"stripe"`
-	Updated         time.Time          `bson:"updated" json:"updated" validate:"required"`
-	Created         time.Time          `bson:"created" json:"created" validate:"required"`
+	Updated         time.Time          `validate:"required" bson:"updated" json:"updated"`
+	Created         time.Time          `validate:"required" bson:"created" json:"created"`
 }
 
 // NewPayment returns payment with default values

@@ -20,14 +20,12 @@ func main() {
 
 	c := pb.NewPaymentServiceClient(conn)
 
-	for i := 0; i < 5; i++ {
-		res, err := c.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
-			Email: "isaiah@jirehsoho.com",
-			User:  "12313123",
-		})
-		if err != nil {
-			log.Fatalln(err)
-		}
-		fmt.Printf("Read block %v\n", res)
+	res, err := c.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		Email: "isaiah@jirehsoho.com",
+		User:  "12313123",
+	})
+	if err != nil {
+		log.Fatalln(err)
 	}
+	fmt.Printf("Read block %v\n", res)
 }
