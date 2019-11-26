@@ -10,10 +10,18 @@ help: ## List targets & descriptions
 genproto:
 	protoc --go_out=plugins=grpc:proto -I $(PROTO_DIR) $(PROTO_DIR)/health.proto
 
-gateway:
+gateway:	
+	if [ ! -d "proto-gen" ]; then \
+			mkdir proto-gen; \
+	fi
+
+	protoc -I../../proto/api -I../../proto/third_party/googleapis --go_out=plugins=grpc:./proto-gen ../../proto/api/payment/*.proto
+	protoc -I../../proto/api -I../../proto/third_party/googleapis --go_out=plugins=grpc:./proto-gen ../../proto/api/payment/*.proto
+	
 	protoc -I/usr/local/include -I. \
-		-I$GOPATH/src \
-		-I ../../pb \
-		-I$GOPATH/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		--grpc-gateway_out=logtostderr=true:. \
-		../../pb/health.proto
+		-I../../proto/api \
+		-I../../proto/third_party/googleapis \
+		--grpc-gateway_out=logtostderr=true,allow_repeated_fields_in_body=true:proto-gen \
+		../../proto/api/**/*.proto
+
+	

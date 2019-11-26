@@ -8,8 +8,6 @@ import "google/api/annotations.proto";
 
 package payment;
 
-option go_package ="payment";
-
 service PaymentService {
   /*
    * Payment
