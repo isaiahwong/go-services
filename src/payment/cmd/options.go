@@ -60,7 +60,6 @@ func Store(store *store.MongoStore) ServerOption {
 
 // EnvConfig Application wide env configurations
 //
-//
 // AppEnv specifies if the app is in `development` or `production`
 // Host specifies host address or dns
 // Port specifies the port the server will run on

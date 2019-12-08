@@ -21,6 +21,8 @@ func (p *PaymentService) CreatePayment(ctx context.Context, req *pb.CreatePaymen
 	email := strings.TrimSpace(req.GetEmail())
 	md := metadata.Pairs()
 
+	p.logger.Println(user)
+
 	errors := validator.Val(
 		validator.Field{
 			Param:   "email",

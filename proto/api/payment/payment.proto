@@ -12,7 +12,12 @@ service PaymentService {
   /*
    * Payment
    */
-  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/payment/create",
+      body: "*"
+    };
+  };
 
   rpc RetrievePayment(RetrievePaymentRequest) returns (RetrievePaymentResponse) {
     option (google.api.http) = {

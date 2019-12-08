@@ -1,0 +1,160 @@
+##################################################
+## Gateway Service
+##################################################
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: default
+spec:
+  ports:
+    - name: http
+      port: 5000
+      targetPort: gateway-port
+    - name: https
+      port: 443
+      targetPort: webhook-port
+    - name: admin
+      port: 8080
+      targetPort: admin-port
+  selector:
+    app: gateway-service
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-env-configmap
+  namespace: default
+data:
+  APP_ENV: 'development'
+  PORT: '5000'
+
+  WEBHOOK_PORT: '8443'
+
+  DISABLE_K8S_CLIENT: 'false'
+  ENABLE_STACKDRIVER: 'false'
+
+---
+# Gateway Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      serviceAccountName: api-gateway
+      containers:
+        - name: gateway
+          image: registry.gitlab.com/isaiahwong/go/api/gateway
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: gateway-port
+              containerPort: 5000
+            - name: webhook-port
+              containerPort: 8443
+            - name: admin-port
+              containerPort: 8080
+
+          envFrom:
+            - configMapRef:
+                name: gateway-env-configmap
+
+          volumeMounts:
+            - name: webhook-tls-certs
+              mountPath: /run/secrets/tls
+              readOnly: true
+
+          livenessProbe:
+            httpGet:
+              path: /hz
+              port: 5000
+            initialDelaySeconds: 60
+            periodSeconds: 120
+
+      volumes:
+        - name: webhook-tls-certs
+          secret:
+            secretName: webhook-server-tls
+
+      imagePullSecrets:
+        - name: gitlab-auth
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-gateway
+  namespace: default
+---
+# Role
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: default
+  name: api-gateway
+rules:
+  - apiGroups: ['', 'extensions', 'apps']
+    resources: ['services', 'namespaces']
+    verbs: ['get', 'list']
+
+---
+# Role Binding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: api-gateway-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: api-gateway
+subjects:
+  - kind: ServiceAccount
+    name: api-gateway
+    namespace: default
+
+---
+##################################################
+## Gateway Webhook
+##################################################
+
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: gateway-webhook
+webhooks:
+  - name: gateway-service.default.svc
+    clientConfig:
+      service:
+        name: gateway-service
+        namespace: default
+        path: '/webhook'
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJBQ0NRRDhtWXluejdSNEh6QU5CZ2txaGtpRzl3MEJBUXNGQURBbU1TUXdJZ1lEVlFRRERCdG4KWVhSbGQyRjVMWE5sY25acFkyVXVaR1ZtWVhWc2RDNXpkbU13SGhjTk1Ua3hNakE0TURZd09UTTNXaGNOTWpBdwpNVEEzTURZd09UTTNXakFtTVNRd0lnWURWUVFEREJ0bllYUmxkMkY1TFhObGNuWnBZMlV1WkdWbVlYVnNkQzV6CmRtTXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEMUJ3TWx4L1F2R3Q1Wk9qY3EKdHBxTGI5aDhnV0taeDA5SHVBaEwvNllwTlBxUGFQanRXQ3cxRUJwaWRxRERMZ0NURThVcThiRG5tdUQvZnoyKwpmWEozbXJxZkFMM01YSU5ydVE1b2ZWaEY3RFdsa1BGZDFNNWhrZGtJQlYxWmM3QTJpZGRyRXZUdVhuN1UxM2dzCi9PbERJeWF6VTM4ZGJ5bUZObWJoRlJxSTkyMTBOZndqSE5GV1VjU0hPejc4T3RoQVZ4WUNvZkFzQzlLTXQ1RXUKZEtGVGdUUHZzRStYUTJOZmdTc0dYbmt6eUFtdFliZUkyM1A1NytpYjJvZVpGQXYzZDhHU1hOcnZ2ajJPMUpRMwpBZlhaajFYU1BJMDVxT3JmOTZtNXNub2JscW51Y1ltaGszYW90ZngvaHdMWlRqRVZqeEhUdFEyTWMyOUtOSlNECmVnT3ZBZ01CQUFFd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFPWmNEZjNDTDJMU2s1QVcyOWl4UzB2OFlhNHMKeUdzWHFmckNwWU5TeEdMdHJGaEJlekNSUmFRbkFhNUJrTkR6NmUvUWZvaElpNFREU0RVVXl6ZHdaaFhFa3pNZwoyNjczN0g3S1JZbk9NNm1OdExscU1Icm0ybjR1UHF4a1lSdlN3Rzh2WGN2elNrNXpGcE1Ta3VncGFwM21MWTdECmgvV2NZSHZ0MWI5emp2Z3h2WHkvL3ZTc3ppSjJ0NC9lT2I1VkluL0NXeHU0cFpJMVkzanBvQU5UU1hLc3JFRisKSWVKeGNWd3VFSHNJZ1NOT1hiVXBKaTJCUTFuaTZHdXJISlFnN3QrSlhTRGhYZFJMNUxzd1NlWHNYZEMrTzdrNwpFZVo0SXoxMmRPL1VXbUFaR0NBQlNON21BSWcvRG83OVBhSklES05lanhUYkVyeFp1OHVQOHNrMnhLdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    rules:
+      - operations: ['*']
+        apiGroups: ['*']
+        apiVersions: ['*']
+        resources: ['services']
+
+---
+apiVersion: v1
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJBQ0NRQ3JST3hXYTU3UTJqQU5CZ2txaGtpRzl3MEJBUVVGQURBbU1TUXdJZ1lEVlFRRERCdG4KWVhSbGQyRjVMWE5sY25acFkyVXVaR1ZtWVhWc2RDNXpkbU13SGhjTk1Ua3hNakE0TURZd09UTTNXaGNOTWpBdwpNVEEzTURZd09UTTNXakFtTVNRd0lnWURWUVFEREJ0bllYUmxkMkY1TFhObGNuWnBZMlV1WkdWbVlYVnNkQzV6CmRtTXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEZDUwUE5ZeFA4TUxvNHhkVU0KUi90YVJMeHNHRHV3b0d3TVRlMTNmMmF6Z1JCWnN1VDd5Rmw5dXRCQVdBWWdpODk5SEFwVVhWanpnSjBIWDhCWApjY2R1anMzQzdFakVHNDRhYXQ3TklZcGVtNFNsWGFsVlpucURxSkFSZzNEZDh6TXJFd1JPdjJtV2RJcUdBU1lOCkU2eVA3YU94K3Y0QjU1L3Erd2FXd3RVbldhbDErMXV4bTJJekI3b05FUXlrSkM1L1dlTUFUaFc5UDB4U0J0UFUKTDVBUG13dWVSM1h0M1BxRU1Cd2J1U2h1RjkxOXlnRU9wTHFUc0Q0YjlvRWoya0NNd3JVNzZTYlpVQ2dUQUNiRgpibVNodU8xMndlcmx3SHlGdDJySEhlZGJqVW5rcmhML0hEUDRVNU5QU29pcld6QlE1U3Q2MHRjSjBWek9uMVlBCnFxSGJBZ01CQUFFd0RRWUpLb1pJaHZjTkFRRUZCUUFEZ2dFQkFHYUE2R1JtM2dHZG1SZUNWRStEdWdWMC9sejUKYmRTTjh4M3FYY0tvNlhSS1NFZE52UmdEYTZ0VWxuM1lSaWQzdTh3TXBRUktjc3ViTjgyYUNXZy9Qblp2VVR6WgordWVna3NtWTVPaWRSemN6Z0w1amdEOVdTd1Q5ZUxydUtkOUNGM2p6UUt4WTlCZHBpOWpueE1hRFJCanQ4UXp0CkFmTmxId1FFZHJUdUNUbC9QYkROTkh3SzE1SkJmcGI3VHZqdVRncWJ2SWNnV0FCMFJBMHdMMk5rVGNWZkdOeXQKZlFMaWpXb0dPL3I1SEZaWFZrK0Q5dy9ldUpJRHROQkVMa2svV3FyMXk3YlNlenBtdGExV3E4Znd6WG8zQkFRQQp4aDFROEFySzkwQndpUVRuZXdUc3JYUW1RVWxhYWc5eWNwczc1dUtxRUpLOGQvZDZ1aUpia0pUWDQwTT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM2VkRHpXTVQvREM2T01YVkRFZjdXa1M4YkJnN3NLQnNERTN0ZDM5bXM0RVFXYkxrCis4aFpmYnJRUUZnR0lJdlBmUndLVkYxWTg0Q2RCMS9BVjNISGJvN053dXhJeEJ1T0dtcmV6U0dLWHB1RXBWMnAKVldaNmc2aVFFWU53M2ZNekt4TUVUcjlwbG5TS2hnRW1EUk9zaisyanNmcitBZWVmNnZzR2xzTFZKMW1wZGZ0YgpzWnRpTXdlNkRSRU1wQ1F1ZjFuakFFNFZ2VDlNVWdiVDFDK1FENXNMbmtkMTdkejZoREFjRzdrb2JoZmRmY29CCkRxUzZrN0ErRy9hQkk5cEFqTUsxTytrbTJWQW9Fd0FteFc1a29ianRkc0hxNWNCOGhiZHF4eDNuVzQxSjVLNFMKL3h3eitGT1RUMHFJcTFzd1VPVXJldExYQ2RGY3pwOVdBS3FoMndJREFRQUJBb0lCQVFEUlFxVTdDK010NFJuTQpMaXdTYjlOR05pbm1XaGY0SWVDaTNkNUI0YUFOU1hvTXpOcUo0azhhZFZDc1RSWkNIUGFuaWdqbnREd05MYzFuCnhkRlI1VmRvR0QxTVE1ei9hdWpnV3NZUGRrRFJwU0U2L1ErU0hKa09qYWlIQzRnbGxwSTdYYXlqUW5rbFRIUFIKbVVXejhVaTdWaVFYMUpVellLWDdaNHk0SWJYM2F5RWJvU1NGOEl4U0FjOVJiaUZnYzJtZEFiSUszeHhxeFJlMApRT3BlbTR6QzVkbzR4Rm9heE9OV3Y0Sk5WS3NFMXphRWkyS3dpd0NvaDFlNFk2TUh4QUlwMmdRSkQxNnRMUEw4CkhqY3Z3Nm1YMG50Q1pyL25yMnVad0E3TVQ4SDZ6cWF1K0RhV1FIOVkrV2RURHk4SXFtTjAvRzJjNjIxeE1nbEwKckpiZkdaYVpBb0dCQVA1VkxMTVFnVjlOTmp2bVBuMzF3UU1LamxaTHdRRUp6OVlBY0ZGRGhQUkVobFVkQlZFZAo4YTRTenpnZUR5YmREWnBFOGwwQmthdk9kai9Hbm5sdE1nSUpsc2taQm9udVVRa3ozenUyZUNXaTFuYzFjZDlXClJKeUxGem9MUUVlNnZJOEhCYXRJQlNFbTRaVCtpRTdqSjZ2aHF1cW0rbjZjSkpBMW5xSFJFai9OQW9HQkFOOWIKcXJNZkF2YU1MQ1N5SXBHYWFpTDcxRkIyaDRabGR2dUJYN1RLaXFBS2xBVEN4TmpjUkYwVlpjWW1zMis2OFFvTwpmMElEa0xPMytjU0s1N1JieE44RjRjUGk0ZXNNeGdnL0pOQ1N4b0Y4LzE2MkhUMW85THdTNGtPdHdEN3pnTnV1Cmo3K2RZUkpCeW5ndFNHaFZKM20za2tuM3lGakdGcEJmRWd5UnRyQkhBb0dBRm93U2hHVm9Ncnl6bkNmVFRuTmwKQXhJQ2dHQUM0a2F1YURodHZLYVJ1TjRDVXJWWjdWRU1SZlJnN29hcnJUUlhxbCtHWlB4b242U1VFeDlXbVVrMgo3N3RONU5JVkpGRStXZVNCVzlmWFd1N091STdDWTV4UVJOaUgzSnQydldVdXBqZG5KMEloUWtraUlvVldMRGd6CklpZkZjVHdRWlAwT3VNSW9LQXhTNDlrQ2dZRUFnd1MzWmVqY0NSbUNUMmc2eE9RcVBDa3lpcHhzdFJaUnJBaGcKeHFGRW5jcDJ0ekEwM2V5ZklXY0sweWdpZTNqU0tZOEZjUWk4V2QraVlIc0duWkp6TWt1MStmemRmczU0WDZBQwpqV0o3bEx0bzVQcTR2aXdSMnp6TWd0eXA5NE5JNUJSS2VDRHVMeEp1blA0YkNqQmhQcEhDK3lhZzNBb2VkRU9BClIrVTFuOE1DZ1lBenp1eW9uRHJndkVhVG0wZWNUdWhiZnIrR3p1TTBUV0NUSzhhcEZqU2xGeFJ2QUxHYURybE8KSTluejNIM3JkK2YxZzl5Nk01R1hBNEREZTcwR09tbHRDci9GYnBBcTQvT1FQd05qdTBDalFTOG5HeG9KS2lMcgpUUytrK2kwbU9vUVNhcmdYNWlaWEhCNGNkT0RZNUl3OGd6b0VHWFVvTmNFR3dFbjFvTDUrNWc9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+kind: Secret
+metadata:
+  name: webhook-server-tls
+  namespace: default
+type: kubernetes.io/tls

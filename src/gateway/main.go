@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"google.golang.org/grpc"
 
+	"github.com/isaiahwong/go-services/src/gateway/cmd"
 	gw "github.com/isaiahwong/go-services/src/gateway/proto-gen/payment"
 )
 
@@ -37,14 +37,15 @@ func run() error {
 	fmt.Println("Starting server")
 
 	// Start HTTP server (and proxy calls to gRPC server endpoint)
-	return http.ListenAndServe(":8081", mux)
+	return http.ListenAndServe(":8080", mux)
 }
 
 func main() {
-	flag.Parse()
-	defer glog.Flush()
+	cmd.Execute()
+	// flag.Parse()
+	// defer glog.Flush()
 
-	if err := run(); err != nil {
-		glog.Fatal(err)
-	}
+	// if err := run(); err != nil {
+	// 	glog.Fatal(err)
+	// }
 }
