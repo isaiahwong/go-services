@@ -3,7 +3,6 @@ BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo no-commit-id)
 IMAGE_NAME := registry.gitlab.com/isaiahwong/go/api/gateway
 VERSION := 0.0.1
 
-
 PROTO_DIR := ../../pb
 
 .DEFAULT_GOAL := help
@@ -29,5 +28,3 @@ genproto:
 		-I../../proto/third_party/googleapis \
 		--grpc-gateway_out=logtostderr=true,allow_repeated_fields_in_body=true:proto-gen \
 		../../proto/api/payment/*.proto
-
-	

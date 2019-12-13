@@ -85,6 +85,11 @@ func (*PaymentService) RetrievePayment(context.Context, *pb.RetrievePaymentReque
 
 	return &pb.RetrievePaymentResponse{}, nil
 }
+
+func (*PaymentService) RetrievePaymentSuper(context.Context, *pb.RetrievePaymentRequest) (*pb.RetrievePaymentResponse, error) {
+	return &pb.RetrievePaymentResponse{}, nil
+}
+
 func (*PaymentService) Refund(context.Context, *pb.RefundRequest) (*pb.RefundResponse, error) {
 	return &pb.RefundResponse{}, nil
 }

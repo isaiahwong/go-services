@@ -38,34 +38,35 @@ type WebhookServer struct {
 	Notifier *AdmissionNotifier
 }
 
-func webhookMiddleware(r *gin.Engine, an *AdmissionNotifier) error {
-	r.Use(gin.Recovery())
-	r.POST("/webhook", func(c *gin.Context) {
-		if c.Request.Body == nil {
+func webhookMiddleware(an *AdmissionNotifier) func(*gin.Engine) {
+	return func(r *gin.Engine) {
+		r.Use(gin.Recovery())
+		r.POST("/webhook", func(c *gin.Context) {
+			if c.Request.Body == nil {
+				c.JSON(200, gin.H{
+					"success": true,
+				})
+				return
+			}
+
+			// Read the content
+			bodyBytes, err := ioutil.ReadAll(c.Request.Body)
+			if err != nil {
+				// TODO Log
+				c.AbortWithStatusJSON(400, gin.H{"success": false})
+				return
+			}
+
+			// Restore the io.ReadCloser to its original state
+			c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
+			// Notify all subscribes
+			an.Notify(Event{Data: bodyBytes})
 			c.JSON(200, gin.H{
 				"success": true,
 			})
-			return
-		}
-
-		// Read the content
-		bodyBytes, err := ioutil.ReadAll(c.Request.Body)
-		if err != nil {
-			// TODO Log
-			c.AbortWithStatusJSON(400, gin.H{"success": false})
-			return
-		}
-
-		// Restore the io.ReadCloser to its original state
-		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-
-		// Notify all subscribes
-		an.Notify(Event{Data: bodyBytes})
-		c.JSON(200, gin.H{
-			"success": true,
 		})
-	})
-	return nil
+	}
 }
 
 // NewWebhook returns a new webhook server
@@ -74,19 +75,14 @@ func NewWebhook(port string) (*WebhookServer, error) {
 	an := &AdmissionNotifier{
 		observers: map[Observer]struct{}{},
 	}
-
-	r, err := newRouter(func(r *gin.Engine) error {
-		return webhookMiddleware(r, an)
-	})
+	r, err := newRouter(webhookMiddleware(an))
 	if err != nil {
 		return nil, err
 	}
-
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%v", port),
 		Handler: r,
 	}
-
 	ws := &WebhookServer{
 		Server:   s,
 		Notifier: an,
