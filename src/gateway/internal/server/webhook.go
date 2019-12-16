@@ -7,26 +7,27 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/isaiahwong/go-services/src/gateway/internal/observer"
 )
 
 // AdmissionNotifier keep track of observers and notifies
 // observers when webhook receives from AdmissionController
 type AdmissionNotifier struct {
-	observers map[Observer]struct{}
+	observers map[observer.Observer]struct{}
 }
 
 // Register subscribes observers for an admission event
-func (en *AdmissionNotifier) Register(l Observer) {
+func (en *AdmissionNotifier) Register(l observer.Observer) {
 	en.observers[l] = struct{}{}
 }
 
 // Deregister removes observers from the notifier lists
-func (en *AdmissionNotifier) Deregister(l Observer) {
+func (en *AdmissionNotifier) Deregister(l observer.Observer) {
 	delete(en.observers, l)
 }
 
 // Notify broadcasts to all observers
-func (en *AdmissionNotifier) Notify(e Event) {
+func (en *AdmissionNotifier) Notify(e observer.Event) {
 	for o := range en.observers {
 		o.OnNotify(e)
 	}
@@ -61,7 +62,7 @@ func webhookMiddleware(an *AdmissionNotifier) func(*gin.Engine) {
 			c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 			// Notify all subscribes
-			an.Notify(Event{Data: bodyBytes})
+			an.Notify(observer.Event{Data: bodyBytes})
 			c.JSON(200, gin.H{
 				"success": true,
 			})
@@ -73,7 +74,7 @@ func webhookMiddleware(an *AdmissionNotifier) func(*gin.Engine) {
 func NewWebhook(port string) (*WebhookServer, error) {
 	// Initialize a new Notifier
 	an := &AdmissionNotifier{
-		observers: map[Observer]struct{}{},
+		observers: map[observer.Observer]struct{}{},
 	}
 	r, err := newRouter(webhookMiddleware(an))
 	if err != nil {

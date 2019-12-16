@@ -22,7 +22,7 @@ import (
 )
 
 
-func protos() []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error {
+func getProtos() []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error {
 	return []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error{
 		pb.Register{{.Name}}Handler,
 	}
@@ -31,7 +31,7 @@ func protos() []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) err
 
 func main() {
 	var d data = data{"PaymentService"}
-	f, err := os.Create("./server/genprotos.go")
+	f, err := os.Create("./internal/server/protos.go")
 	if err != nil {
 		log.Fatalf("failed with %s\n", err)
 	}

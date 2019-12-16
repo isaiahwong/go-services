@@ -23,8 +23,9 @@ genproto:
 
 	protoc -I../../proto/api -I../../proto/third_party/googleapis --go_out=plugins=grpc:./proto-gen ../../proto/api/payment/*.proto
 	
-	protoc -I/usr/local/include -I. \
+	protoc \
 		-I../../proto/api \
 		-I../../proto/third_party/googleapis \
 		--grpc-gateway_out=logtostderr=true,allow_repeated_fields_in_body=true:proto-gen \
+		--swagger_out=logtostderr=true:proto-gen \
 		../../proto/api/payment/*.proto

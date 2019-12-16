@@ -10,8 +10,9 @@ import (
 	"google.golang.org/grpc"
 
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/isaiahwong/go-services/src/gateway/server/k8s"
-	"github.com/isaiahwong/go-services/src/gateway/server/k8s/enum"
+	"github.com/isaiahwong/go-services/src/gateway/internal/k8s"
+	"github.com/isaiahwong/go-services/src/gateway/internal/k8s/enum"
+	"github.com/isaiahwong/go-services/src/gateway/internal/observer"
 	"github.com/isaiahwong/go-services/src/gateway/util/log"
 )
 
@@ -47,39 +48,63 @@ type GatewayServer struct {
 	Server   *http.Server
 	services map[string]*k8s.APIService
 	opts     *gatewayOptions
+	gw       *gwruntime.ServeMux
 }
 
 // OnNotify receives events when being triggered
-func (gs *GatewayServer) OnNotify(e Event) {
+func (gs *GatewayServer) OnNotify(e observer.Event) {
 	if e.Data == nil || len(e.Data) == 0 {
 		return
 	}
 	gs.mapAdmission(e.Data)
 }
 
-func (gs *GatewayServer) updateServices(s *k8s.APIService) {
+// updateServices updates gateway services
+func (gs *GatewayServer) updateServices(service *k8s.APIService) {
+	if service == nil {
+		gs.opts.logger.Error("updateServices: service is nil")
+		return
+	}
+	if service.DNSPath == "" {
+		gs.opts.logger.Error("updateServices: service.DNSPath is empty")
+		return
+	}
 	// Create map if services is not assigned
 	if gs.services == nil {
 		gs.services = map[string]*k8s.APIService{}
 	}
-	gs.services[s.DNSPath] = s
-	gs.applyRoutes()
+	gs.services[service.DNSPath] = service
 }
 
+// applyRoutes creates a new replaces the server's http handler with
+// newly populated routes
 func (gs *GatewayServer) applyRoutes() {
-	// Initialize a new gateway
-	// gw, err := newGateway(context.Background(), nil)
-	// if err != nil {
-	// 	gs.opts.logger.Errorf("applyRoutes: %v", err)
-	// }
-	// // Create a new http router
-	// r, err := newRouter(
-	// 	httpMiddleware,
-	// 	gatewayMiddleware(gw),
-	// )
-	// if err != nil {
-	// 	gs.opts.logger.Errorf("applyRoutes: %v", err)
-	// }
+	// Create new Router
+	r, err := newRouter(
+		httpMiddleware,
+		gatewayMiddleware(gs.gw),
+	)
+	if err != nil {
+		gs.opts.logger.Errorf("applyRoutes: %v", err)
+	}
+	// Create a new http router
+	for _, svc := range gs.services {
+		for _, port := range svc.Ports {
+			gs.opts.logger.Println(svc.DNSPath, port.Port)
+			switch port.Name {
+			case "http":
+				path := fmt.Sprintf("/%v%v", svc.APIversion, svc.Path)
+				rp := reverseProxy(fmt.Sprintf("http://%v:%v%v", svc.DNSPath, port.Port, path))
+				// Routes GET root path
+				r.GET(path, rp)
+				// Routes all requests to service
+				r.Any(fmt.Sprintf("%v/*any", path), rp)
+			}
+		}
+	}
+
+	// Apply routes to server handler
+	gs.Server.Handler = r
 }
 
 // fetchAllServices fetches all services from cluster
@@ -138,6 +163,7 @@ func (gs *GatewayServer) create(ar *k8s.AdmissionRegistration) {
 		gs.opts.logger.Error(err)
 	}
 	gs.updateServices(s)
+	gs.applyRoutes()
 }
 
 func gatewayMiddleware(gw *gwruntime.ServeMux) func(*gin.Engine) {
@@ -146,13 +172,14 @@ func gatewayMiddleware(gw *gwruntime.ServeMux) func(*gin.Engine) {
 			return
 		}
 		// Proxies to gateway services
-		r.Any("/api/*any", gin.WrapF(gw.ServeHTTP))
+		r.Any("/v1/*any", gin.WrapF(gw.ServeHTTP))
 	}
 }
 
 func httpMiddleware(r *gin.Engine) {
 	r.Use(gin.Recovery())
-	r.Any("/test", func(c *gin.Context) {
+	// Health route
+	r.GET("/hz", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "success",
 		})
@@ -173,18 +200,17 @@ func newRouter(attachMiddleware ...func(r *gin.Engine)) (*gin.Engine, error) {
 
 func newGateway(ctx context.Context, opts []gwruntime.ServeMuxOption) (*gwruntime.ServeMux, error) {
 	mux := gwruntime.NewServeMux(opts...)
-	conn, err := grpc.DialContext(ctx, "localhost:50051", grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "payment-service.default:50051", grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-
-	for _, f := range protos() {
+	for _, f := range getProtos() {
 		err = f(ctx, mux, conn)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(conn.GetState().String())
 	}
-
 	return mux, nil
 }
 
@@ -194,15 +220,21 @@ func NewGatewayServer(port string, opt ...GatewayOption) (*GatewayServer, error)
 	for _, o := range opt {
 		o(&opts)
 	}
-	// Initialize GatewayServer
-	gs := &GatewayServer{
-		opts:     &opts,
-		services: map[string]*k8s.APIService{},
-	}
 	// Initialize a new gateway
 	gw, err := newGateway(context.Background(), nil)
 	if err != nil {
 		return nil, err
+	}
+	// Initialize Http Server
+	s := &http.Server{
+		Addr: fmt.Sprintf(":%v", port),
+	}
+	// Initialize GatewayServer
+	gs := &GatewayServer{
+		opts:     &opts,
+		services: map[string]*k8s.APIService{},
+		Server:   s,
+		gw:       gw,
 	}
 	// Initialize K8SClient if nil
 	if opts.k8sClient != nil {
@@ -211,18 +243,9 @@ func NewGatewayServer(port string, opt ...GatewayOption) (*GatewayServer, error)
 			return nil, err
 		}
 	}
-	// Create a new http router
-	r, err := newRouter(
-		httpMiddleware,
-		gatewayMiddleware(gw),
-	)
+	gs.applyRoutes()
 	if err != nil {
 		return nil, err
 	}
-	s := &http.Server{
-		Addr:    fmt.Sprintf(":%v", port),
-		Handler: r,
-	}
-	gs.Server = s
 	return gs, nil
 }

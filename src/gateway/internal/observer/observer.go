@@ -1,4 +1,4 @@
-package server
+package observer
 
 type (
 	// Event defines an indication of a point-in-time occurrence.

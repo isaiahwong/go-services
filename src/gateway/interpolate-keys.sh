@@ -42,4 +42,6 @@ find $basedir -name "gateway.yaml" -exec sed -i '' -e "s/tls.crt:.*/tls.crt: ${t
 # Replaces the cabundle in gateway.yaml
 find $basedir -name "gateway.yaml" -exec sed -i '' -e"s/caBundle:.*/caBundle: ${ca_pem_b64}/g;" {} +;
 
+rm -rf webhook-cert
+
 echo "$basedir/gateway.yaml has been interpolated with keys"

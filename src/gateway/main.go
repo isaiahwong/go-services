@@ -6,19 +6,25 @@ import (
 	"os/exec"
 )
 
+func buildCmd(name string, cmd ...string) *exec.Cmd {
+	c := exec.Command(name, cmd...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c
+}
+
 func main() {
-	cmd := exec.Command("go", "run", "hack/genproto/main.go")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+	// Generates service handlers dynamically
+	gen := buildCmd("go", "run", "hack/genproto/main.go")
+	if err := gen.Run(); err != nil {
+		log.Printf("Failed to start cmd: %v", err)
 	}
-	cmd = exec.Command("go", "run", "cmd/gateway/main.go")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+	format := buildCmd("go", "fmt", "internal/server/protos.go")
+	if err := format.Run(); err != nil {
+		log.Printf("Failed to start cmd: %v", err)
+	}
+	server := buildCmd("go", "run", "cmd/gateway/main.go")
+	if err := server.Run(); err != nil {
+		log.Printf("Failed to start cmd: %v", err)
 	}
 }

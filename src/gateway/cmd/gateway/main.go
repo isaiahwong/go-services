@@ -9,15 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/isaiahwong/go-services/src/gateway/server"
-	"github.com/isaiahwong/go-services/src/gateway/server/k8s"
+	"github.com/isaiahwong/go-services/src/gateway/internal/k8s"
+	"github.com/isaiahwong/go-services/src/gateway/internal/server"
 	"github.com/isaiahwong/go-services/src/gateway/util/log"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 // EnvConfig Application wide env configurations
-//
 // AppEnv specifies if the app is in `development` or `production`
 // Host specifies host address or dns
 // Port specifies the port the server will run on
@@ -71,7 +70,7 @@ func mapEnvWithDefaults(envKey string, defaults string) string {
 	return v
 }
 
-// LoadEnv loads envariables for AppConfig
+// LoadEnv loads environment variables for Application
 func loadEnv() {
 	err := godotenv.Load()
 	if err != nil {
@@ -98,7 +97,7 @@ func init() {
 }
 
 // Kills server gracefully
-func gracefully(srvs []*http.Server) {
+func gracefully(s *http.Server) {
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
 	quit := make(chan os.Signal)
@@ -109,20 +108,18 @@ func gracefully(srvs []*http.Server) {
 	<-quit
 	logger.Println("Shutdown Servers ...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	for _, srv := range srvs {
-		if err := srv.Shutdown(ctx); err != nil {
-			logger.Fatal("Server Shutdown:", err)
-		}
-		// catching ctx.Done(). timeout of 5 seconds.
-		select {
-		case <-ctx.Done():
-			logger.Println("timeout of 5 seconds.")
-		}
-		logger.Println("Server exiting")
+	if err := s.Shutdown(ctx); err != nil {
+		logger.Fatal("Server Shutdown:", err)
 	}
+	// catching ctx.Done(). timeout of 5 seconds.
+	select {
+	case <-ctx.Done():
+		logger.Println("timeout of 5 seconds.")
+	}
+	logger.Println("Server exiting")
 }
 
 // Execute the entry point for gateway
@@ -152,24 +149,19 @@ func main() {
 	// Registers gateway as an observer
 	ws.Notifier.Register(gs)
 
-	srvs := []*http.Server{
-		gs.Server,
-		// ws.Server,
-	}
-
 	go func() {
-		// service connections
+		// Start gateway Server
 		if err := gs.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("Gateway Server: %s\n", err)
 		}
 	}()
 
-	// go func() {
-	// 	// service connections
-	// 	if err := ws.Server.ListenAndServeTLS(config.WebhookCertDir, config.WebhookKeyDir); err != nil && err != http.ErrServerClosed {
-	// 		logger.Fatalf("Webhook server: %s\n", err)
-	// 	}
-	// }()
+	go func() {
+		// Start Webbhook Server
+		if err := ws.Server.ListenAndServeTLS(config.WebhookCertDir, config.WebhookKeyDir); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("Webhook server: %s\n", err)
+		}
+	}()
 
-	gracefully(srvs)
+	gracefully(gs.Server)
 }

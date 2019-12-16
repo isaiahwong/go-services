@@ -962,29 +962,29 @@ func RegisterPaymentServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_PaymentService_CreatePayment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "payment", "create"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_CreatePayment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "payment", "create"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_RetrievePayment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "payment", "retrieve"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_RetrievePayment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "payment", "retrieve"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_Refund_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "payment", "refund"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_Refund_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "payment", "refund"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_StripeSetupIntent_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "s", "intent", "setup"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_StripeSetupIntent_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "s", "intent", "setup"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_StripeAddCard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "s", "card", "add"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_StripeAddCard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "s", "card", "add"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_StripeCharge_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"api", "v1", "payment", "s", "charge"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_StripeCharge_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "payment", "s", "charge"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_StripeTestWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "stripe", "webhook", "test"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_StripeTestWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "stripe", "webhook", "test"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_StripePaymentIntentWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "stripe", "webhook", "paymentintent"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_StripePaymentIntentWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "stripe", "webhook", "paymentintent"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_PaypalCreateOrder_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "p", "order", "create"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_PaypalCreateOrder_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "p", "order", "create"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_PaypalProcessOrder_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "p", "order", "process"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_PaypalProcessOrder_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "p", "order", "process"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_PaypalOrderWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "paypal", "webhook", "order"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_PaypalOrderWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "paypal", "webhook", "order"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PaymentService_PaypalTestWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5}, []string{"api", "v1", "payment", "paypal", "webhook", "test"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_PaymentService_PaypalTestWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v1", "payment", "paypal", "webhook", "test"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
