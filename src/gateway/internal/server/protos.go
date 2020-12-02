@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+type svc struct{}
+
 func getProtos() []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error {
 	return []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error{
 		pb.RegisterPaymentServiceHandler,

@@ -10,17 +10,16 @@ type data struct {
 	Name string
 }
 
+// TODO: Wait for protoc v2
 const prototemplate = `
 package server
 
 import (
 	"context"
-
-	pb "github.com/isaiahwong/go-services/src/gateway/proto-gen/payment"
+	"fmt"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"google.golang.org/grpc"
 )
-
 
 func getProtos() []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error {
 	return []func(context.Context, *gwruntime.ServeMux, *grpc.ClientConn) error{

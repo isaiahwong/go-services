@@ -209,7 +209,6 @@ func newGateway(ctx context.Context, opts []gwruntime.ServeMuxOption) (*gwruntim
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(conn.GetState().String())
 	}
 	return mux, nil
 }
